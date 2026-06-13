@@ -1,0 +1,27 @@
+{
+  "pagesCount": 50,
+  "publicationIds": ["1047116", "1044098"],
+  "publicationRefs": {
+    "1047116": {
+      "id": "1047116",
+      "timePublished": "2026-06-13T13:55:30+00:00",
+      "lang": "ru",
+      "titleHtml": "Как мы внедряли <b>ML</b> в продакшн",
+      "author": { "alias": "popkovden", "fullname": "Денис П." },
+      "leadData": { "textHtml": "<p>История о граблях и метриках.</p>", "imageUrl": "https://habrastorage.org/getpro/habr/lead116.jpg" },
+      "hubs": [{ "alias": "machine_learning", "title": "Машинное обучение" }],
+      "flows": [], "tags": ["ML", "MLOps"],
+      "statistics": { "score": 42, "commentsCount": 7, "readingCount": 1200 }
+    },
+    "1044098": {
+      "id": "1044098",
+      "timePublished": "2026-05-20T08:00:00+00:00",
+      "lang": "ru",
+      "titleHtml": "Древняя статья",
+      "author": { "alias": "old", "fullname": "Old A." },
+      "leadData": { "textHtml": "<p>Очень старое.</p>", "imageUrl": null },
+      "hubs": [], "flows": [], "tags": ["history"],
+      "statistics": { "score": 1, "commentsCount": 0, "readingCount": 10 }
+    }
+  }
+}
