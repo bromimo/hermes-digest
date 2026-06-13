@@ -31,4 +31,9 @@ final class SearchApiParserTest extends TestCase
         self::assertSame([], (new SearchApiParser())->parse('null'));
         self::assertSame([], (new SearchApiParser())->parse('{"x":1}'));
     }
+
+    public function test_handles_scalar_publication_ids(): void
+    {
+        self::assertSame([], (new SearchApiParser())->parse('{"publicationIds":42,"publicationRefs":{}}'));
+    }
 }

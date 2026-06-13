@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Habr;
 
 use App\Support\UrlNormalizer;
+use App\Support\DateNormalizer;
 
 /**
  * Парсер RSS-лент Хабра в унифицированный формат элементов дайджеста.
@@ -20,6 +21,7 @@ final class RssParser
     {
         $prev = libxml_use_internal_errors(true);
         $sx = simplexml_load_string($xml);
+        libxml_clear_errors();
         libxml_use_internal_errors($prev);
 
         if ($sx === false || !isset($sx->channel)) {
@@ -31,6 +33,9 @@ final class RssParser
             $guid = (string) $item->guid;
             $link = (string) $item->link;
             $url = $this->urls->canonical($guid !== '' ? $guid : $link);
+            if ($url === '') {
+                continue;
+            }
 
             $desc = (string) $item->description;
             $image = null;
@@ -39,17 +44,7 @@ final class RssParser
             }
             $snippet = trim(mb_substr(html_entity_decode(strip_tags($desc)), 0, 400));
 
-            $pub = trim((string) $item->pubDate);
-            $publishedAt = null;
-            if ($pub !== '') {
-                try {
-                    $publishedAt = (new \DateTimeImmutable($pub))
-                        ->setTimezone(new \DateTimeZone('UTC'))
-                        ->format(DATE_ATOM);
-                } catch (\Exception) {
-                    $publishedAt = null;
-                }
-            }
+            $publishedAt = DateNormalizer::toAtomUtc(trim((string) $item->pubDate));
 
             $tags = [];
             foreach ($item->category as $cat) {
@@ -57,7 +52,7 @@ final class RssParser
             }
 
             $items[] = [
-                'title' => trim((string) $item->title),
+                'title' => trim(html_entity_decode((string) $item->title)),
                 'url' => $url,
                 'published_at' => $publishedAt,
                 'source' => 'habr',

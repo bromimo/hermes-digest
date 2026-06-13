@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Habr;
 
+use App\Support\DateNormalizer;
+
 /**
  * Парсер ответа внутреннего JSON-API Хабра (/kek/v2/articles/) в унифицированный формат.
  */
@@ -15,7 +17,11 @@ final class SearchApiParser
     public function parse(string $json): array
     {
         $data = json_decode($json, true);
-        if (!is_array($data) || !isset($data['publicationIds'], $data['publicationRefs'])) {
+        if (
+            !is_array($data)
+            || !is_array($data['publicationIds'] ?? null)
+            || !is_array($data['publicationRefs'] ?? null)
+        ) {
             return [];
         }
 
@@ -27,23 +33,16 @@ final class SearchApiParser
                 continue;
             }
 
-            $published = null;
-            if (!empty($ref['timePublished'])) {
-                try {
-                    $published = (new \DateTimeImmutable((string) $ref['timePublished']))
-                        ->setTimezone(new \DateTimeZone('UTC'))
-                        ->format(DATE_ATOM);
-                } catch (\Exception) {
-                    $published = null;
-                }
-            }
+            $published = DateNormalizer::toAtomUtc(
+                !empty($ref['timePublished']) ? (string) $ref['timePublished'] : null
+            );
 
             $lead = (string) ($ref['leadData']['textHtml'] ?? '');
             $image = $ref['leadData']['imageUrl'] ?? null;
 
             $tags = [];
             foreach (($ref['tags'] ?? []) as $t) {
-                $tags[] = (string) $t;
+                $tags[] = is_string($t) ? $t : (string) ($t['titleHtml'] ?? $t['title'] ?? '');
             }
 
             $out[] = [

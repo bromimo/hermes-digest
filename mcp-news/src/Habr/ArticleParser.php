@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Habr;
 
+use App\Support\DateNormalizer;
 use Symfony\Component\DomCrawler\Crawler;
 
 /**
@@ -26,17 +27,10 @@ final class ArticleParser
 
         $author = $this->firstText($crawler, 'a.tm-user-info__username');
 
-        $published = null;
         $time = $crawler->filter('time[datetime]');
-        if ($time->count() > 0) {
-            try {
-                $published = (new \DateTimeImmutable((string) $time->first()->attr('datetime')))
-                    ->setTimezone(new \DateTimeZone('UTC'))
-                    ->format(DATE_ATOM);
-            } catch (\Exception) {
-                $published = null;
-            }
-        }
+        $published = $time->count() > 0
+            ? DateNormalizer::toAtomUtc((string) $time->first()->attr('datetime'))
+            : null;
 
         $image = $this->metaContent($crawler, 'og:image');
         if ($image === null && $body->count() > 0) {
