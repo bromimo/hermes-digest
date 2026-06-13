@@ -1,0 +1,28 @@
+# Hermes Agent config for the news-digest bot.
+# Secrets come from environment (compose `environment:`) — nothing secret here.
+
+model:
+  provider: openrouter
+  default: "${HERMES_MODEL}"   # e.g. openai/gpt-oss-120b:free (free, tools, 131K ctx)
+  context_length: null
+
+# External MCP server, reached by compose service name over StreamableHTTP.
+mcp_servers:
+  mcpnews:
+    url: "http://mcpnews:8000/mcp"
+    timeout: 180
+    connect_timeout: 10
+
+# Built-in memory (used by the skill for cross-request dedup).
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  write_approval: false
+
+# Messaging gateway: Telegram via long polling. Token + allow-list come from env.
+gateway:
+  platforms:
+    telegram:
+      enabled: true
+      extra:
+        require_mention: false

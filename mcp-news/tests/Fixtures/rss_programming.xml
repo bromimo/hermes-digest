@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title><![CDATA[Все статьи подряд / Программирование / Хабр]]></title>
+    <link>https://habr.com/ru/articles/</link>
+    <language>ru</language>
+    <pubDate>Sat, 13 Jun 2026 13:57:54 GMT</pubDate>
+    <item>
+      <title><![CDATA[Нужно ли использовать Qwen? Качество и цена]]></title>
+      <guid isPermaLink="true">https://habr.com/ru/articles/1047108/</guid>
+      <link>https://habr.com/ru/articles/1047108/?utm_campaign=1047108&amp;utm_source=habrahabr&amp;utm_medium=rss</link>
+      <description><![CDATA[<img src="https://habrastorage.org/getpro/habr/upload_files/e93/lead.jpg" /><p>Китайские модели дешевле и местами не хуже.</p>]]></description>
+      <pubDate>Sat, 13 Jun 2026 13:51:49 GMT</pubDate>
+      <dc:creator><![CDATA[opium]]></dc:creator>
+      <category><![CDATA[Qwen]]></category>
+      <category><![CDATA[LLM]]></category>
+      <category><![CDATA[машинное обучение]]></category>
+    </item>
+    <item>
+      <title><![CDATA[Старая новость про PHP]]></title>
+      <guid isPermaLink="true">https://habr.com/ru/articles/1000001/</guid>
+      <link>https://habr.com/ru/articles/1000001/</link>
+      <description><![CDATA[<p>Это было давно.</p>]]></description>
+      <pubDate>Mon, 01 Jun 2026 09:00:00 GMT</pubDate>
+      <dc:creator><![CDATA[author2]]></dc:creator>
+      <category><![CDATA[PHP]]></category>
+    </item>
+  </channel>
+</rss>
