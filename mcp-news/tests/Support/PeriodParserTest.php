@@ -40,6 +40,12 @@ final class PeriodParserTest extends TestCase
         self::assertSame('2026-06-10T23:59:59+00:00', $r['until']->format(DATE_ATOM));
     }
 
+    public function test_months(): void
+    {
+        $r = $this->parser()->parse('1m');
+        self::assertSame('2026-05-13T12:00:00+00:00', $r['since']->format(DATE_ATOM));
+    }
+
     public function test_default_on_garbage(): void
     {
         $r = $this->parser()->parse('whenever');

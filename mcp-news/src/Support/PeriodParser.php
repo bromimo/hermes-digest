@@ -3,11 +3,22 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+/**
+ * Разбирает строковое представление периода в диапазон дат.
+ */
 final class PeriodParser
 {
+    /**
+     * Создаёт экземпляр с заданным источником времени.
+     *
+     * @param Clock $clock
+     */
     public function __construct(private Clock $clock) {}
 
     /**
+     * Разбирает строку периода и возвращает границы диапазона.
+     *
+     * @param string $period
      * @return array{since: \DateTimeImmutable, until: \DateTimeImmutable}
      */
     public function parse(string $period): array
@@ -30,7 +41,7 @@ final class PeriodParser
                 'h' => "PT{$n}H",
                 'd' => "P{$n}D",
                 'w' => 'P' . ($n * 7) . 'D',
-                'm' => 'P' . ($n * 30) . 'D',
+                'm' => "P{$n}M",
             };
             return ['since' => $now->sub(new \DateInterval($spec)), 'until' => $now];
         }
@@ -39,6 +50,14 @@ final class PeriodParser
         return ['since' => $now->sub(new \DateInterval('P7D')), 'until' => $now];
     }
 
+    /**
+     * Проверяет, входит ли момент времени в заданный диапазон.
+     *
+     * @param \DateTimeImmutable $dt
+     * @param \DateTimeImmutable $since
+     * @param \DateTimeImmutable $until
+     * @return bool
+     */
     public function isWithin(\DateTimeImmutable $dt, \DateTimeImmutable $since, \DateTimeImmutable $until): bool
     {
         return $dt >= $since && $dt <= $until;

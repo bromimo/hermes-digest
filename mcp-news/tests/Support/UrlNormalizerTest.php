@@ -35,6 +35,15 @@ final class UrlNormalizerTest extends TestCase
         );
     }
 
+    public function test_canonical_strips_query_when_no_article_id(): void
+    {
+        $n = new UrlNormalizer();
+        self::assertSame(
+            'https://habr.com/ru/search/',
+            $n->canonical('https://habr.com/ru/search/?query=php')
+        );
+    }
+
     public function test_id_null_when_absent(): void
     {
         $n = new UrlNormalizer();
