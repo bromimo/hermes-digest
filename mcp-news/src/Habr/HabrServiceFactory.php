@@ -3,20 +3,19 @@ declare(strict_types=1);
 
 namespace App\Habr;
 
-use App\Support\PeriodParser;
-use App\Support\SystemClock;
-use App\Support\UrlNormalizer;
 use GuzzleHttp\Client;
-use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
+use App\Support\SystemClock;
 use GuzzleHttp\Psr7\Request;
+use App\Support\PeriodParser;
+use GuzzleHttp\HandlerStack;
+use App\Support\UrlNormalizer;
 use Psr\Http\Message\ResponseInterface;
 
 final class HabrServiceFactory
 {
-    /**Фабрика HabrService: собирает зависимости из переменных окружения с Guzzle retry-middleware.
-     *
-     * @return HabrService
+    /**
+     * Фабрика HabrService: собирает зависимости из окружения с Guzzle retry-middleware.
      */
     public static function fromEnv(): HabrService
     {

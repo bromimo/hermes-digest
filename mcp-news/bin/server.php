@@ -13,14 +13,17 @@ $server = Server::make()
 // Scan src/ for #[McpTool] attributes (discovers DigestTools).
 $server->discover(basePath: __DIR__ . '/..', scanDirs: ['src']);
 
+$host = getenv('MCP_HOST') ?: '0.0.0.0';
+$port = (int) (getenv('MCP_PORT') ?: 8000);
+
 $transport = new StreamableHttpServerTransport(
-    host: getenv('MCP_HOST') ?: '0.0.0.0', // inside container; not published to host
-    port: (int) (getenv('MCP_PORT') ?: 8000),
-    mcpPath: 'mcp',                          // serves /mcp (real param name in v3.3.0)
-    enableJsonResponse: false,               // SSE streaming (StreamableHTTP default)
+    host: $host,
+    port: $port,
+    mcpPath: 'mcp',
+    enableJsonResponse: false, // false = SSE streaming (JSON-mode выключен; в либе по умолчанию true)
     stateless: false,
 );
 
-fwrite(STDERR, "mcp-news listening on " . (getenv('MCP_HOST') ?: '0.0.0.0') . ":" . ((int) (getenv('MCP_PORT') ?: 8000)) . "/mcp\n");
+fwrite(STDERR, "mcp-news listening on {$host}:{$port}/mcp\n");
 
 $server->listen($transport); // blocking; runs the ReactPHP event loop
