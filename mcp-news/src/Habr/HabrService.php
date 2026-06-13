@@ -53,9 +53,11 @@ final class HabrService
     public function getNews(string $topic, string $period, int $limit): array
     {
         $limit = max(1, min(30, $limit));
+        ['since' => $since, 'until' => $until] = $this->period->parse($period);
         try {
-            $path       = $this->feedPath($topic);
-            $useKeyword = !$this->isHubFeed($topic);
+            $slug       = $this->resolveHubSlug($topic);
+            $path       = $slug !== null ? "/ru/rss/hub/{$slug}/all/?fl=ru" : '/ru/rss/all/all/';
+            $useKeyword = $slug === null;
             $items      = $this->rss->parse($this->client->getRss($path));
         } catch (HabrUnavailable $e) {
             return ['items' => [], 'count' => 0, 'error' => 'Источник недоступен: ' . $e->getMessage()];
@@ -64,7 +66,7 @@ final class HabrService
         if ($useKeyword) {
             $items = $this->keywordFilter($items, $topic);
         }
-        $items = $this->periodFilter($items, $period);
+        $items = $this->periodFilter($items, $since, $until);
         $items = $this->sortNewestFirst($items);
         $items = array_slice($items, 0, $limit);
 
@@ -81,30 +83,33 @@ final class HabrService
      */
     public function searchHabr(string $query, string $period, int $limit): array
     {
-        $limit     = max(1, min(30, $limit));
+        $limit = max(1, min(30, $limit));
+        ['since' => $since, 'until' => $until] = $this->period->parse($period);
         $collected = [];
-        try {
-            // загружаем до 3 страниц (сначала новые), прерываемся досрочно при достижении лимита
-            for ($page = 1; $page <= 3; $page++) {
+        $error = null;
+        for ($page = 1; $page <= 3; $page++) {
+            try {
                 $items = $this->search->parse($this->client->getSearch($query, $page));
-                if ($items === []) {
-                    break;
-                }
-                foreach ($items as $it) {
-                    $collected[] = $it;
-                }
-                if (count($this->periodFilter($collected, $period)) >= $limit) {
-                    break;
-                }
+            } catch (HabrUnavailable $e) {
+                $error = 'Поиск недоступен: ' . $e->getMessage();
+                break;
             }
-        } catch (HabrUnavailable $e) {
-            return ['items' => [], 'count' => 0, 'error' => 'Поиск недоступен: ' . $e->getMessage()];
+            if ($items === []) {
+                break;
+            }
+            foreach ($items as $it) {
+                $collected[] = $it;
+            }
+            if (count($this->periodFilter($collected, $since, $until)) >= $limit) {
+                break;
+            }
         }
-
-        $items = $this->periodFilter($collected, $period);
+        if ($collected === [] && $error !== null) {
+            return ['items' => [], 'count' => 0, 'error' => $error];
+        }
+        $items = $this->periodFilter($collected, $since, $until);
         $items = $this->sortNewestFirst($items);
         $items = array_slice($items, 0, $limit);
-
         return ['items' => array_values($items), 'count' => count($items)];
     }
 
@@ -121,12 +126,9 @@ final class HabrService
             $html = $this->client->getArticle($url);
         } catch (HabrUnavailable $e) {
             return [
-                'title'        => null,
-                'text'         => '',
-                'author'       => null,
-                'published_at' => null,
-                'image'        => null,
-                'error'        => 'Статья недоступна: ' . $e->getMessage(),
+                'title' => null, 'text' => '', 'author' => null, 'published_at' => null,
+                'image' => null, 'url' => $url,
+                'error' => 'Статья недоступна: ' . $e->getMessage(),
             ];
         }
         $parsed        = $this->article->parse($html, $url);
@@ -135,29 +137,21 @@ final class HabrService
     }
 
     /**
-     * @param string $topic Тема или псевдоним.
-     * @return string RSS-путь для клиента.
+     * Определяет slug хаба Habr по теме: из карты синонимов или из самого slug-подобного значения.
+     *
+     * @param string $topic тема запроса
+     * @return string|null slug хаба или null, если тему нужно искать по ключевым словам в общей ленте
      */
-    private function feedPath(string $topic): string
+    private function resolveHubSlug(string $topic): ?string
     {
         $key = mb_strtolower(trim($topic));
         if (isset(self::HUBS[$key])) {
-            return '/ru/rss/hub/' . self::HUBS[$key] . '/all/?fl=ru';
+            return self::HUBS[$key];
         }
         if (preg_match('/^[a-z0-9_]+$/', $key) === 1) {
-            return '/ru/rss/hub/' . $key . '/all/?fl=ru';
+            return $key;
         }
-        return '/ru/rss/all/all/';
-    }
-
-    /**
-     * @param string $topic Тема.
-     * @return bool True, если тема соответствует известному хабу.
-     */
-    private function isHubFeed(string $topic): bool
-    {
-        $key = mb_strtolower(trim($topic));
-        return isset(self::HUBS[$key]) || preg_match('/^[a-z0-9_]+$/', $key) === 1;
+        return null;
     }
 
     /**
@@ -167,14 +161,17 @@ final class HabrService
      */
     private function keywordFilter(array $items, string $topic): array
     {
-        $terms = array_values(array_filter(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($topic)) ?: []));
+        $terms = array_values(array_filter(
+            preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($topic)) ?: [],
+            static fn (string $t): bool => mb_strlen($t) >= 2
+        ));
         if ($terms === []) {
             return $items;
         }
         return array_filter($items, function (array $it) use ($terms): bool {
             $hay = mb_strtolower($it['title'] . ' ' . $it['snippet'] . ' ' . implode(' ', $it['tags']));
             foreach ($terms as $t) {
-                if (mb_strlen($t) >= 2 && str_contains($hay, $t)) {
+                if (str_contains($hay, $t)) {
                     return true;
                 }
             }
@@ -183,13 +180,13 @@ final class HabrService
     }
 
     /**
-     * @param array  $items  Список статей.
-     * @param string $period Период фильтрации.
+     * @param array               $items Список статей.
+     * @param \DateTimeImmutable  $since Начало периода.
+     * @param \DateTimeImmutable  $until Конец периода.
      * @return array Статьи, попадающие в период.
      */
-    private function periodFilter(array $items, string $period): array
+    private function periodFilter(array $items, \DateTimeImmutable $since, \DateTimeImmutable $until): array
     {
-        ['since' => $since, 'until' => $until] = $this->period->parse($period);
         return array_filter($items, function (array $it) use ($since, $until): bool {
             if (empty($it['published_at'])) {
                 return false;

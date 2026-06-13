@@ -93,4 +93,53 @@ final class HabrServiceTest extends TestCase
         self::assertSame(0, $res['count']);
         self::assertArrayHasKey('error', $res);
     }
+
+    public function test_search_habr_returns_error_when_first_page_down(): void
+    {
+        $client = new class implements HabrClientInterface {
+            public function getRss(string $path): string { return ''; }
+            public function getSearch(string $query, int $page = 1): string { throw new HabrUnavailable('down'); }
+            public function getArticle(string $url): string { return ''; }
+        };
+
+        $res = $this->service($client)->searchHabr('ML', '7d', 10);
+        self::assertSame([], $res['items']);
+        self::assertSame(0, $res['count']);
+        self::assertArrayHasKey('error', $res);
+    }
+
+    public function test_search_habr_keeps_partial_results_when_later_page_fails(): void
+    {
+        $json   = file_get_contents(__DIR__ . '/../Fixtures/kek_search.json');
+        $client = new class($json) implements HabrClientInterface {
+            public function __construct(private string $json) {}
+            public function getRss(string $path): string { return ''; }
+            public function getSearch(string $query, int $page = 1): string
+            {
+                if ($page > 1) {
+                    throw new HabrUnavailable('later page down');
+                }
+                return $this->json;
+            }
+            public function getArticle(string $url): string { return ''; }
+        };
+
+        // clock is 2026-06-14, window 7d → only the June-13 item survives
+        $res = $this->service($client)->searchHabr('ML', '7d', 10);
+        self::assertSame(1, $res['count']);
+        self::assertArrayNotHasKey('error', $res);
+    }
+
+    public function test_fetch_article_error_envelope_includes_url(): void
+    {
+        $client = new class implements HabrClientInterface {
+            public function getRss(string $path): string { return ''; }
+            public function getSearch(string $query, int $page = 1): string { return '{}'; }
+            public function getArticle(string $url): string { throw new HabrUnavailable('gone'); }
+        };
+
+        $res = $this->service($client)->fetchArticle('https://habr.com/ru/articles/1047108/');
+        self::assertSame('https://habr.com/ru/articles/1047108/', $res['url']);
+        self::assertArrayHasKey('error', $res);
+    }
 }
