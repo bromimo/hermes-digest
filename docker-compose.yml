@@ -1,0 +1,37 @@
+services:
+  mcpnews:
+    build: ./mcp-news
+    image: hermes-digest/mcp-news:latest
+    environment:
+      - HABR_BASE_URL=${HABR_BASE_URL:-https://habr.com}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    networks: [appnet]
+    restart: unless-stopped
+    # порт НЕ публикуется на хост — доступ только из appnet (Hermes по имени mcpnews)
+
+  hermes-agent:
+    image: nousresearch/hermes-agent:latest
+    command: ["gateway", "run"]
+    depends_on:
+      - mcpnews
+    environment:
+      - HERMES_MODEL=${HERMES_MODEL}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS}
+      - HERMES_UID=10000
+      - HERMES_GID=10000
+    volumes:
+      - hermes-home:/opt/data
+      - ./hermes/config.yaml:/opt/data/config.yaml:ro
+      - ./hermes/skills/news:/opt/data/skills/news:ro
+    networks: [appnet]
+    restart: unless-stopped
+
+volumes:
+  hermes-home:
+
+networks:
+  appnet:
+    driver: bridge
