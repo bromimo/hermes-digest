@@ -32,3 +32,4 @@ Thumbs.db
 /.backups/
 /docs/design_handoff_erp_style/
 /docs/audit/
+/.log/

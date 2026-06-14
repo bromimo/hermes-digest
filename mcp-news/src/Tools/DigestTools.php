@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Tools;
 
+use App\Dedup\DedupStore;
 use App\Habr\HabrService;
 use App\Dedup\DedupService;
 use App\Support\UrlNormalizer;
@@ -11,15 +12,19 @@ use PhpMcp\Server\Attributes\McpTool;
 
 final class DigestTools
 {
-    /**Инструменты MCP-сервера: поиск/лента/статья через HabrService и дедуп через DedupService.*/
+    /**Инструменты MCP-сервера: поиск/лента/статья через HabrService и серверный дедуп (DedupService + DedupStore).*/
     private HabrService $habr;
 
     private DedupService $dedup;
+
+    private DedupStore $store;
 
     public function __construct()
     {
         $this->habr = HabrServiceFactory::fromEnv();
         $this->dedup = new DedupService(new UrlNormalizer());
+        $dbPath = getenv('DEDUP_DB_PATH') ?: (sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hermes-dedup.sqlite');
+        $this->store = new DedupStore($dbPath);
     }
 
     /**
@@ -63,30 +68,33 @@ final class DigestTools
     }
 
     /**
-     * Remove already-shown Habr candidates against the per-topic "seen" memory blob. Call once after merging search_habr/get_news results and before selecting articles to annotate. Attaches an explicit numeric `id` to each returned item and drops within-batch duplicates.
+     * Remove already-shown Habr candidates using the server-side per-topic dedup store. Call once after merging search_habr/get_news results and before selecting articles to annotate. Pass the topic `key`; the MCP server reads the stored shown IDs itself (you do NOT pass or manage any memory). Attaches a numeric `id` to each returned item and drops within-batch duplicates.
      *
-     * @param array $candidates Merged candidate items from search_habr/get_news, each with at least a `url`. Passed through as-is.
-     * @param string $seen_blob Raw memory line for this chat+topic (snapshot of shown IDs), passed verbatim; "" if none. Opaque — do not parse it.
+     * @param string $key Per-topic dedup key, e.g. "digest:<chat_id>:<topic-slug>" (topic lowercased, spaces→dashes; if chat_id is unknown use "digest:<topic-slug>"). Use the SAME key in dedup_commit.
+     * @param array $candidates Merged candidate items from search_habr/get_news, each with at least a `url`.
      * @return array{fresh: array<int, array<string, mixed>>, candidate_count: int, removed_count: int}
      */
     #[McpTool(name: 'dedup_filter')]
-    public function dedupFilter(array $candidates, string $seen_blob = ''): array
+    public function dedupFilter(string $key, array $candidates): array
     {
-        return $this->dedup->filter($candidates, $seen_blob);
+        return $this->dedup->filter($candidates, $this->store->seenIds($key));
     }
 
     /**
-     * Merge the IDs actually shown in this digest into the per-topic "seen" memory blob and return the updated memory line to store. Call once after the final article set is assembled. Keeps a sliding window of the most recent IDs. Write the returned `line` to memory: add it if there was no prior line, otherwise replace the prior line (use seen_blob verbatim as the old text).
+     * Record the IDs actually shown in this digest into the server-side per-topic dedup store (atomic; persists across requests). Call once after the final article set is assembled, with the SAME `key` as dedup_filter and the shown `id`s. The server merges them with previously stored IDs and trims a sliding window — there is NO memory to write yourself.
      *
-     * @param string $key Memory key for this chat+topic, e.g. "digest:<chat_id>:<topic-slug>".
-     * @param array $shown_ids Numeric IDs of articles that made it into the digest (take `id` from dedup_filter's `fresh`). Null/non-numeric ignored.
-     * @param string $seen_blob Prior raw memory line (same string passed to dedup_filter), or "". Opaque.
+     * @param string $key Per-topic dedup key (same one passed to dedup_filter).
+     * @param array $shown_ids Numeric IDs of articles included in the digest (take `id` from dedup_filter's `fresh`). Null/non-numeric ignored.
      * @param int $keep Max IDs to retain in the sliding window. Default 50.
-     * @return array{line: string, id_count: int}
+     * @return array{id_count: int}
      */
     #[McpTool(name: 'dedup_commit')]
-    public function dedupCommit(string $key, array $shown_ids, string $seen_blob = '', int $keep = 50): array
+    public function dedupCommit(string $key, array $shown_ids, int $keep = 50): array
     {
-        return $this->dedup->commit($key, $shown_ids, $seen_blob, $keep);
+        return $this->store->transaction(function () use ($key, $shown_ids, $keep): array {
+            $merged = $this->dedup->merge($this->store->seenIds($key), $shown_ids, $keep);
+            $this->store->save($key, $merged);
+            return ['id_count' => count($merged)];
+        });
     }
 }

@@ -6,7 +6,7 @@ namespace App\Dedup;
 use App\Support\UrlNormalizer;
 
 /**
- * Детерминированный дедуп материалов дайджеста: фильтрация показанных и обновление окна показанных ID.
+ * Чистая логика дедупа (без IO): фильтрация кандидатов и слияние скользящего окна показанных ID.
  */
 final class DedupService
 {
@@ -21,15 +21,15 @@ final class DedupService
      * Фильтрует кандидатов, убирая показанные ранее статьи и внутри-запросные дубли.
      *
      * @param list<array<string, mixed>> $candidates объединённый список кандидатов из поиска/ленты
-     * @param string $seenBlob сырая строка памяти с показанными ранее ID (или пустая)
+     * @param list<int> $seenIds ID, показанные ранее (из хранилища)
      * @return array{fresh: list<array<string, mixed>>, candidate_count: int, removed_count: int}
-     *   `removed_count` — количество кандидатов, отброшенных потому что их id уже есть в seen-наборе;
-     *   внутри-запросные дубли молча схлопываются и в `removed_count` НЕ входят.
-     *   Поле `id` проставляется (и перезаписывает любое существующее значение `id`) на каждом возвращённом элементе.
+     *   `removed_count` — сколько кандидатов отброшено как уже показанные; внутри-запросные дубли
+     *   схлопываются молча и в `removed_count` не входят. Поле `id` проставляется (перезаписывая
+     *   любое существующее) на каждом возвращённом элементе.
      */
-    public function filter(array $candidates, string $seenBlob = ''): array
+    public function filter(array $candidates, array $seenIds = []): array
     {
-        $seenSet = array_fill_keys($this->parseIds($seenBlob), true);
+        $seenSet = array_fill_keys($seenIds, true);
 
         $fresh = [];
         $batchIds = [];
@@ -75,17 +75,16 @@ final class DedupService
     }
 
     /**
-     * Объединяет показанные ранее ID с вошедшими в дайджест и обрезает окно, возвращая новую строку памяти.
+     * Сливает показанные ранее ID с вошедшими в дайджест и обрезает скользящее окно.
      *
-     * @param string $key ключ памяти `digest:<chat_id>:<тема-slug>`
-     * @param list<int|string|null> $shownIds ID статей, реально вошедших в дайджест (нечисловые и null отбрасываются)
-     * @param string $seenBlob старая строка памяти (или пустая)
+     * @param list<int> $seenIds показанные ранее ID (старейшие слева)
+     * @param list<int|string|null> $shownIds ID, вошедшие в дайджест (нечисловые и null отбрасываются)
      * @param int $keep максимальный размер окна по количеству ID
-     * @return array{line: string, id_count: int} новая строка памяти и число ID в ней
+     * @return list<int> обновлённое окно ID (старейшие слева, новейшие справа)
      */
-    public function commit(string $key, array $shownIds, string $seenBlob = '', int $keep = 50): array
+    public function merge(array $seenIds, array $shownIds, int $keep = 50): array
     {
-        $result = $this->parseIds($seenBlob);
+        $result = array_values($seenIds);
 
         foreach ($shownIds as $raw) {
             if (!is_numeric($raw)) {
@@ -103,36 +102,6 @@ final class DedupService
             $result = array_slice($result, -$keep);
         }
 
-        return [
-            'line' => $key . ' ids: ' . implode(', ', $result),
-            'id_count' => count($result),
-        ];
-    }
-
-    /**
-     * Извлекает числовые ID из строки памяти: числа после маркера `ids:` (регистронезависимо) или, при его отсутствии, все числа строки.
-     *
-     * @param string $blob строка памяти
-     * @return list<int> ID в порядке появления, без дублей
-     */
-    private function parseIds(string $blob): array
-    {
-        if (trim($blob) === '') {
-            return [];
-        }
-        $pos = stripos($blob, 'ids:');
-        $haystack = $pos !== false ? substr($blob, $pos + 4) : $blob;
-        preg_match_all('/\d+/', $haystack, $m);
-
-        $ids = [];
-        $seen = [];
-        foreach ($m[0] as $num) {
-            $id = (int) $num;
-            if (!isset($seen[$id])) {
-                $seen[$id] = true;
-                $ids[] = $id;
-            }
-        }
-        return $ids;
+        return $result;
     }
 }
