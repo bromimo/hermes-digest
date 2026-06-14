@@ -8,7 +8,7 @@
 docker compose run --rm hermes-agent -z "собери дайджест по теме AI / ML за последнюю неделю"
 ```
 
-**Подтверждение вызовов MCP-инструментов** (из логов контейнера `mcpnews`):
+**Подтверждение вызовов MCP-инструментов** (из логов контейнера `mcp-news`):
 ```
 [mcp-news] TOOL CALL: search_habr(query=AI ML, period=7d, limit=20)
 [mcp-news] search_habr returned count=20
