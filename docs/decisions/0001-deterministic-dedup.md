@@ -88,4 +88,4 @@
 ## Следующий шаг
 
 Детальный дизайн (контракты инструментов, формат blob, обработка ошибок, тесты) — в spec
-`docs/specs/2026-06-14-deterministic-dedup-design.md`.
+`docs/superpowers/specs/2026-06-14-deterministic-dedup-design.md`.
