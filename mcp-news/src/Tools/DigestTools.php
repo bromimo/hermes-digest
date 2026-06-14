@@ -23,7 +23,7 @@ final class DigestTools
      * @param string $topic Topic or Habr hub slug. Examples: "machine_learning", "artificial_intelligence", "programming", "php", or a free phrase like "AI/ML" / "машинное обучение".
      * @param string $period Time window. Examples: "24h" (last day), "7d" (last week), "30d" (last month), or a date range "YYYY-MM-DD..YYYY-MM-DD". Default "7d".
      * @param int $limit Max number of articles to return, 1..30. Default 7.
-     * @return array{items: array<int, array<string, mixed>>, count: int, error?: string}
+     * @return array{items: array<int, array<string, mixed>>, count: int, since: string, until: string, error?: string}
      */
     #[McpTool(name: 'get_news')]
     public function getNews(string $topic, string $period = '7d', int $limit = 7): array
@@ -37,7 +37,7 @@ final class DigestTools
      * @param string $query Free-text search query in Russian or English.
      * @param string $period Time window. Examples: "24h", "7d", "30d", or "YYYY-MM-DD..YYYY-MM-DD". Default "7d".
      * @param int $limit Max number of articles to return, 1..30. Default 20.
-     * @return array{items: array<int, array<string, mixed>>, count: int, error?: string}
+     * @return array{items: array<int, array<string, mixed>>, count: int, since: string, until: string, error?: string}
      */
     #[McpTool(name: 'search_habr')]
     public function searchHabr(string $query, string $period = '7d', int $limit = 20): array
