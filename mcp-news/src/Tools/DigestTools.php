@@ -26,7 +26,7 @@ final class DigestTools
      * Get recent Habr articles for a topic from RSS feeds, filtered by period. Use for a broad news stream by hub/topic when the user does not give a precise search query.
      *
      * @param string $topic Topic or Habr hub slug. Examples: "machine_learning", "artificial_intelligence", "programming", "php", or a free phrase like "AI/ML" / "машинное обучение".
-     * @param string $period Time window. Examples: "24h" (last day), "7d" (last week), "30d" (last month), or a date range "YYYY-MM-DD..YYYY-MM-DD". Default "7d".
+     * @param string $period Time window, general form "N<unit>" with unit h|d|w|m (hours, days, weeks, months): e.g. "24h", "7d", "3d", "2w", "30d", "6m". Or an absolute date range "YYYY-MM-DD..YYYY-MM-DD". Default "7d". Date filtering is performed on the MCP side.
      * @param int $limit Max number of articles to return, 1..30. Default 7.
      * @return array{items: array<int, array<string, mixed>>, count: int, since: string, until: string, error?: string}
      */
@@ -40,7 +40,7 @@ final class DigestTools
      * Search Habr articles by a query string, sorted newest-first, filtered by period. Prefer this when the user gives a concrete topic/keywords (e.g. "vector databases", "LLM agents"). Returns lightweight items; call fetch_article to get full text.
      *
      * @param string $query Free-text search query in Russian or English.
-     * @param string $period Time window. Examples: "24h", "7d", "30d", or "YYYY-MM-DD..YYYY-MM-DD". Default "7d".
+     * @param string $period Time window, general form "N<unit>" with unit h|d|w|m (hours, days, weeks, months): e.g. "24h", "7d", "3d", "2w", "30d", "6m". Or an absolute date range "YYYY-MM-DD..YYYY-MM-DD". Default "7d". Date filtering is performed on the MCP side.
      * @param int $limit Max number of articles to return, 1..30. Default 20.
      * @return array{items: array<int, array<string, mixed>>, count: int, since: string, until: string, error?: string}
      */
