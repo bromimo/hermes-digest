@@ -164,7 +164,7 @@ vendor/bin/phpunit
 ```
 
 Юнит-тесты покрывают: `PeriodParser`, `UrlNormalizer`, `RssParser`, `SearchApiParser`,
-`ArticleParser`, `HabrClient`, `HabrService`.
+`ArticleParser`, `HabrClient`, `HabrService`, `DedupService`, а также делегирование dedup-инструментов в `DigestTools`.
 
 ## Примеры
 
