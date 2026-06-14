@@ -135,6 +135,7 @@ final class DedupServiceTest extends TestCase
     {
         $r = $this->service()->commit('digest:1:t', [100], 'digest:1:t ids: 100, 200, 300');
         self::assertSame('digest:1:t ids: 200, 300, 100', $r['line']);
+        self::assertSame(3, $r['id_count']);
     }
 
     public function test_commit_trims_to_keep(): void

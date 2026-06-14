@@ -78,7 +78,7 @@ final class DedupService
      * Объединяет показанные ранее ID с вошедшими в дайджест и обрезает окно, возвращая новую строку памяти.
      *
      * @param string $key ключ памяти `digest:<chat_id>:<тема-slug>`
-     * @param list<int|string> $shownIds ID статей, реально вошедших в дайджест (нечисловые отбрасываются)
+     * @param list<int|string|null> $shownIds ID статей, реально вошедших в дайджест (нечисловые и null отбрасываются)
      * @param string $seenBlob старая строка памяти (или пустая)
      * @param int $keep максимальный размер окна по количеству ID
      * @return array{line: string, id_count: int} новая строка памяти и число ID в ней
