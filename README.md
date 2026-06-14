@@ -109,6 +109,39 @@ docker compose up --build
 Бот разберёт тему и период, вызовет инструменты `mcpnews`, аннотирует статьи и пришлёт
 обзорную статью с обложкой.
 
+## Управление контейнерами
+
+```bash
+docker compose up --build            # поднять (foreground)
+docker compose up -d --build         # поднять в фоне
+docker compose ps                    # статус сервисов
+docker compose logs -f hermes-agent  # логи агента
+docker compose down                  # опустить (volume с памятью сохраняется)
+```
+
+**Очистка памяти Hermes** (сброс дедупа — память живёт в volume `hermes-home`):
+
+```bash
+docker compose down -v               # опустить и стереть память Hermes
+```
+
+> `down -v` удаляет volume `hermes-home` (память/дедуп Hermes). Конфиг и skill не теряются —
+> их заново засевает сервис `seeder` при следующем `up` из файлов репозитория.
+
+## Прогон без Telegram (один запрос)
+
+Дать задание Hermes напрямую, минуя Telegram, — неинтерактивный режим `hermes chat`
+(выполнит реальный прогон: модель → skill → MCP-инструменты → память, вывод в stdout):
+
+```bash
+docker compose run --rm hermes-agent chat -q "собери дайджест по теме AI/ML за последнюю неделю" -s news-digest -Q --yolo
+```
+
+- `-q` — один запрос (non-interactive), `-Q` — тихий режим (только финальный ответ);
+- `-s news-digest` — подгрузить навык, `--yolo` — не зависать на подтверждениях без TTY.
+- Команда поднимет зависимости (`mcp-news`, `seeder`); дайджест выводится в stdout,
+  без отправки в Telegram. Память/дедуп обновляются как при обычном прогоне.
+
 ## LLM
 
 Используется **OpenRouter, бесплатный уровень**. Модель по умолчанию:
