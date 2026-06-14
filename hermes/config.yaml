@@ -9,7 +9,7 @@ model:
 # External MCP server, reached by compose service name over StreamableHTTP.
 mcp_servers:
   mcpnews:
-    url: "http://mcpnews:8000/mcp"
+    url: "http://mcp-news:8000/mcp"
     timeout: 180
     connect_timeout: 10
 

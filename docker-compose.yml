@@ -1,5 +1,5 @@
 services:
-  mcpnews:
+  mcp-news:
     build: ./mcp-news
     image: hermes-digest/mcp-news:latest
     environment:
@@ -8,7 +8,7 @@ services:
       - MCP_PORT=8000
     networks: [appnet]
     restart: unless-stopped
-    # порт НЕ публикуется на хост — доступ только из appnet (Hermes по имени mcpnews)
+    # порт НЕ публикуется на хост — доступ только из appnet (Hermes по имени mcp-news)
 
   seeder:
     image: busybox:1.36
@@ -26,7 +26,7 @@ services:
     image: nousresearch/hermes-agent:latest
     command: ["gateway", "run"]
     depends_on:
-      mcpnews:
+      mcp-news:
         condition: service_started
       seeder:
         condition: service_completed_successfully
