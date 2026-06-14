@@ -8,26 +8,51 @@ use PHPUnit\Framework\TestCase;
 
 final class DigestToolsDedupTest extends TestCase
 {
-    public function test_dedup_filter_delegates_to_service(): void
+    private string $dbPath;
+
+    protected function setUp(): void
     {
-        $tools = new DigestTools();
-        $result = $tools->dedupFilter(
-            [
-                ['url' => 'https://habr.com/ru/articles/100/'],
-                ['url' => 'https://habr.com/ru/articles/200/'],
-            ],
-            'digest:1:t ids: 200'
-        );
-        self::assertSame(1, $result['removed_count']);
-        self::assertCount(1, $result['fresh']);
-        self::assertSame(100, $result['fresh'][0]['id']);
+        $this->dbPath = tempnam(sys_get_temp_dir(), 'dedup_tools_');
+        putenv('DEDUP_DB_PATH=' . $this->dbPath);
     }
 
-    public function test_dedup_commit_delegates_to_service(): void
+    protected function tearDown(): void
+    {
+        putenv('DEDUP_DB_PATH');
+        foreach ([$this->dbPath, $this->dbPath . '-wal', $this->dbPath . '-shm'] as $f) {
+            if (is_file($f)) {
+                @unlink($f);
+            }
+        }
+    }
+
+    public function test_dedup_filter_and_commit_roundtrip_via_store(): void
     {
         $tools = new DigestTools();
-        $result = $tools->dedupCommit('digest:1:t', [300], 'digest:1:t ids: 100, 200');
-        self::assertSame('digest:1:t ids: 100, 200, 300', $result['line']);
-        self::assertSame(3, $result['id_count']);
+        $key = 'digest:1:ai-ml';
+
+        // commit two shown ids → persisted server-side
+        $committed = $tools->dedupCommit($key, [100, 200]);
+        self::assertSame(2, $committed['id_count']);
+
+        // filter against the SAME key → previously shown excluded, new kept
+        $result = $tools->dedupFilter($key, [
+            ['url' => 'https://habr.com/ru/articles/100/'],
+            ['url' => 'https://habr.com/ru/articles/200/'],
+            ['url' => 'https://habr.com/ru/articles/300/'],
+        ]);
+        self::assertSame([300], array_column($result['fresh'], 'id'));
+        self::assertSame(2, $result['removed_count']);
+    }
+
+    public function test_dedup_filter_empty_store_keeps_all(): void
+    {
+        $tools = new DigestTools();
+        $result = $tools->dedupFilter('digest:1:fresh', [
+            ['url' => 'https://habr.com/ru/articles/100/'],
+            ['url' => 'https://habr.com/ru/articles/200/'],
+        ]);
+        self::assertSame([100, 200], array_column($result['fresh'], 'id'));
+        self::assertSame(0, $result['removed_count']);
     }
 }

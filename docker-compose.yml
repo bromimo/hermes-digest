@@ -6,6 +6,9 @@ services:
       - HABR_BASE_URL=${HABR_BASE_URL:-https://habr.com}
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8000
+      - DEDUP_DB_PATH=/data/dedup.sqlite
+    volumes:
+      - mcpnews-data:/data
     networks: [appnet]
     restart: unless-stopped
     # порт НЕ публикуется на хост — доступ только из appnet (Hermes по имени mcp-news)
@@ -44,6 +47,7 @@ services:
 
 volumes:
   hermes-home:
+  mcpnews-data:
 
 networks:
   appnet:
