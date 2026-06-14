@@ -22,7 +22,10 @@ final class DedupService
      *
      * @param list<array<string, mixed>> $candidates объединённый список кандидатов из поиска/ленты
      * @param string $seenBlob сырая строка памяти с показанными ранее ID (или пустая)
-     * @return array{fresh: list<array<string, mixed>>, candidate_count: int, removed_count: int} свежие кандидаты с проставленным id и счётчики
+     * @return array{fresh: list<array<string, mixed>>, candidate_count: int, removed_count: int}
+     *   `removed_count` — количество кандидатов, отброшенных потому что их id уже есть в seen-наборе;
+     *   внутри-запросные дубли молча схлопываются и в `removed_count` НЕ входят.
+     *   Поле `id` проставляется (и перезаписывает любое существующее значение `id`) на каждом возвращённом элементе.
      */
     public function filter(array $candidates, string $seenBlob = ''): array
     {
@@ -31,7 +34,7 @@ final class DedupService
         $fresh = [];
         $batchIds = [];
         $batchUrls = [];
-        $removed = 0;
+        $removedBySeen = 0;
 
         foreach ($candidates as $item) {
             if (!is_array($item)) {
@@ -46,7 +49,7 @@ final class DedupService
                     continue;
                 }
                 if (isset($seenSet[$id])) {
-                    $removed++;
+                    $removedBySeen++;
                     continue;
                 }
                 $batchIds[$id] = true;
@@ -67,12 +70,12 @@ final class DedupService
         return [
             'fresh' => $fresh,
             'candidate_count' => count($candidates),
-            'removed_count' => $removed,
+            'removed_count' => $removedBySeen,
         ];
     }
 
     /**
-     * Извлекает числовые ID из строки памяти: числа после маркера `ids:` или, при его отсутствии, все числа строки.
+     * Извлекает числовые ID из строки памяти: числа после маркера `ids:` (регистронезависимо) или, при его отсутствии, все числа строки.
      *
      * @param string $blob строка памяти
      * @return list<int> ID в порядке появления, без дублей
