@@ -4,17 +4,22 @@ declare(strict_types=1);
 namespace App\Tools;
 
 use App\Habr\HabrService;
+use App\Dedup\DedupService;
+use App\Support\UrlNormalizer;
 use App\Habr\HabrServiceFactory;
 use PhpMcp\Server\Attributes\McpTool;
 
 final class DigestTools
 {
-    /**Инструменты MCP-сервера: три метода, делегирующих запросы к HabrService.*/
+    /**Инструменты MCP-сервера: поиск/лента/статья через HabrService и дедуп через DedupService.*/
     private HabrService $habr;
+
+    private DedupService $dedup;
 
     public function __construct()
     {
         $this->habr = HabrServiceFactory::fromEnv();
+        $this->dedup = new DedupService(new UrlNormalizer());
     }
 
     /**
@@ -55,5 +60,33 @@ final class DigestTools
     public function fetchArticle(string $url): array
     {
         return $this->habr->fetchArticle($url);
+    }
+
+    /**
+     * Remove already-shown Habr candidates against the per-topic "seen" memory blob. Call once after merging search_habr/get_news results and before selecting articles to annotate. Attaches an explicit numeric `id` to each returned item and drops within-batch duplicates.
+     *
+     * @param array $candidates Merged candidate items from search_habr/get_news, each with at least a `url`. Passed through as-is.
+     * @param string $seen_blob Raw memory line for this chat+topic (snapshot of shown IDs), passed verbatim; "" if none. Opaque — do not parse it.
+     * @return array{fresh: array<int, array<string, mixed>>, candidate_count: int, removed_count: int}
+     */
+    #[McpTool(name: 'dedup_filter')]
+    public function dedupFilter(array $candidates, string $seen_blob = ''): array
+    {
+        return $this->dedup->filter($candidates, $seen_blob);
+    }
+
+    /**
+     * Merge the IDs actually shown in this digest into the per-topic "seen" memory blob and return the updated memory line to store. Call once after the final article set is assembled. Keeps a sliding window of the most recent IDs. Write the returned `line` to memory: add it if there was no prior line, otherwise replace the prior line (use seen_blob verbatim as the old text).
+     *
+     * @param string $key Memory key for this chat+topic, e.g. "digest:<chat_id>:<topic-slug>".
+     * @param array $shown_ids Numeric IDs of articles that made it into the digest (take `id` from dedup_filter's `fresh`). Null/non-numeric ignored.
+     * @param string $seen_blob Prior raw memory line (same string passed to dedup_filter), or "". Opaque.
+     * @param int $keep Max IDs to retain in the sliding window. Default 50.
+     * @return array{line: string, id_count: int}
+     */
+    #[McpTool(name: 'dedup_commit')]
+    public function dedupCommit(string $key, array $shown_ids, string $seen_blob = '', int $keep = 50): array
+    {
+        return $this->dedup->commit($key, $shown_ids, $seen_blob, $keep);
     }
 }
