@@ -48,7 +48,7 @@ final class HabrService
      * @param string $topic  Тема или псевдоним хаба.
      * @param string $period Период в формате "7d", "24h", "2w" или "2026-06-01..2026-06-10".
      * @param int    $limit  Максимальное количество элементов (1–30).
-     * @return array{items: list<array>, count: int, error?: string}
+     * @return array{items: list<array>, count: int, since: string, until: string, error?: string}
      */
     public function getNews(string $topic, string $period, int $limit): array
     {
@@ -60,7 +60,7 @@ final class HabrService
             $useKeyword = $slug === null;
             $items      = $this->rss->parse($this->client->getRss($path));
         } catch (HabrUnavailable $e) {
-            return ['items' => [], 'count' => 0, 'error' => 'Источник недоступен: ' . $e->getMessage()];
+            return ['items' => [], 'count' => 0, 'since' => $since->format('Y-m-d'), 'until' => $until->format('Y-m-d'), 'error' => 'Источник недоступен: ' . $e->getMessage()];
         }
 
         if ($useKeyword) {
@@ -70,7 +70,7 @@ final class HabrService
         $items = $this->sortNewestFirst($items);
         $items = array_slice($items, 0, $limit);
 
-        return ['items' => array_values($items), 'count' => count($items)];
+        return ['items' => array_values($items), 'count' => count($items), 'since' => $since->format('Y-m-d'), 'until' => $until->format('Y-m-d')];
     }
 
     /**
@@ -79,7 +79,7 @@ final class HabrService
      * @param string $query  Поисковый запрос.
      * @param string $period Период фильтрации.
      * @param int    $limit  Максимальное количество элементов (1–30).
-     * @return array{items: list<array>, count: int, error?: string}
+     * @return array{items: list<array>, count: int, since: string, until: string, error?: string}
      */
     public function searchHabr(string $query, string $period, int $limit): array
     {
@@ -105,12 +105,12 @@ final class HabrService
             }
         }
         if ($collected === [] && $error !== null) {
-            return ['items' => [], 'count' => 0, 'error' => $error];
+            return ['items' => [], 'count' => 0, 'since' => $since->format('Y-m-d'), 'until' => $until->format('Y-m-d'), 'error' => $error];
         }
         $items = $this->periodFilter($collected, $since, $until);
         $items = $this->sortNewestFirst($items);
         $items = array_slice($items, 0, $limit);
-        return ['items' => array_values($items), 'count' => count($items)];
+        return ['items' => array_values($items), 'count' => count($items), 'since' => $since->format('Y-m-d'), 'until' => $until->format('Y-m-d')];
     }
 
     /**

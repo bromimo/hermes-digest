@@ -46,6 +46,8 @@ final class HabrServiceTest extends TestCase
         self::assertArrayNotHasKey('error', $res);
         self::assertSame(1, $res['count']);
         self::assertSame('1047108', (new UrlNormalizer())->id($res['items'][0]['url']));
+        self::assertSame('2026-06-07', $res['since']);
+        self::assertSame('2026-06-14', $res['until']);
     }
 
     public function test_search_habr_filters_by_period(): void
@@ -62,6 +64,8 @@ final class HabrServiceTest extends TestCase
         $res = $this->service($client)->searchHabr('ML', '7d', 10);
         self::assertSame(1, $res['count']);
         self::assertSame('https://habr.com/ru/articles/1047116/', $res['items'][0]['url']);
+        self::assertSame('2026-06-07', $res['since']);
+        self::assertSame('2026-06-14', $res['until']);
     }
 
     public function test_fetch_article_returns_object(): void
@@ -92,6 +96,8 @@ final class HabrServiceTest extends TestCase
         self::assertSame([], $res['items']);
         self::assertSame(0, $res['count']);
         self::assertArrayHasKey('error', $res);
+        self::assertSame('2026-06-07', $res['since']);
+        self::assertSame('2026-06-14', $res['until']);
     }
 
     public function test_search_habr_returns_error_when_first_page_down(): void
@@ -106,6 +112,8 @@ final class HabrServiceTest extends TestCase
         self::assertSame([], $res['items']);
         self::assertSame(0, $res['count']);
         self::assertArrayHasKey('error', $res);
+        self::assertSame('2026-06-07', $res['since']);
+        self::assertSame('2026-06-14', $res['until']);
     }
 
     public function test_search_habr_keeps_partial_results_when_later_page_fails(): void
@@ -128,6 +136,8 @@ final class HabrServiceTest extends TestCase
         $res = $this->service($client)->searchHabr('ML', '7d', 10);
         self::assertSame(1, $res['count']);
         self::assertArrayNotHasKey('error', $res);
+        self::assertSame('2026-06-07', $res['since']);
+        self::assertSame('2026-06-14', $res['until']);
     }
 
     public function test_fetch_article_error_envelope_includes_url(): void
