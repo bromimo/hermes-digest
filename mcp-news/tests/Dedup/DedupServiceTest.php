@@ -116,4 +116,50 @@ final class DedupServiceTest extends TestCase
         );
         self::assertSame([100], array_column($r['fresh'], 'id'));
     }
+
+    public function test_commit_appends_new_ids(): void
+    {
+        $r = $this->service()->commit('digest:1:t', [400], 'digest:1:t ids: 100, 200');
+        self::assertSame('digest:1:t ids: 100, 200, 400', $r['line']);
+        self::assertSame(3, $r['id_count']);
+    }
+
+    public function test_commit_empty_seen_creates_line(): void
+    {
+        $r = $this->service()->commit('digest:1:t', [100, 200], '');
+        self::assertSame('digest:1:t ids: 100, 200', $r['line']);
+        self::assertSame(2, $r['id_count']);
+    }
+
+    public function test_commit_moves_existing_shown_to_end(): void
+    {
+        $r = $this->service()->commit('digest:1:t', [100], 'digest:1:t ids: 100, 200, 300');
+        self::assertSame('digest:1:t ids: 200, 300, 100', $r['line']);
+    }
+
+    public function test_commit_trims_to_keep(): void
+    {
+        $r = $this->service()->commit('digest:1:t', [4], 'digest:1:t ids: 1, 2, 3', 3);
+        self::assertSame('digest:1:t ids: 2, 3, 4', $r['line']);
+        self::assertSame(3, $r['id_count']);
+    }
+
+    public function test_commit_keep_boundary_no_trim(): void
+    {
+        $r = $this->service()->commit('digest:1:t', [], 'digest:1:t ids: 1, 2, 3', 3);
+        self::assertSame('digest:1:t ids: 1, 2, 3', $r['line']);
+    }
+
+    public function test_commit_empty_shown_and_seen(): void
+    {
+        $r = $this->service()->commit('digest:1:t', [], '');
+        self::assertSame('digest:1:t ids: ', $r['line']);
+        self::assertSame(0, $r['id_count']);
+    }
+
+    public function test_commit_ignores_non_numeric_shown(): void
+    {
+        $r = $this->service()->commit('digest:1:t', ['abc', null, 5], '');
+        self::assertSame('digest:1:t ids: 5', $r['line']);
+    }
 }
